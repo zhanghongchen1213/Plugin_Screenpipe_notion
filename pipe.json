@@ -1,0 +1,17 @@
+{
+  "build": true,
+  "buildStatus": "success",
+  "crons": [
+    {
+      "path": "/api/log",
+      "schedule": "0 */5 * * * *"
+    },
+    {
+      "path": "/api/intelligence",
+      "schedule": "0 0 */1 * * *"
+    }
+  ],
+  "enabled": true,
+  "is_nextjs": true,
+  "port": 44719
+}
