@@ -147,11 +147,11 @@ interface OpenAIModel {
   owned_by?: string;
 }
 
-export const DEFAULT_PROMPT = `Rules:
-- You can analyze/view/show/access videos to the user by putting .mp4 files in a code block (we'll render it) like this: \`/users/video.mp4\`, use the exact, absolute, file path from file_path property
-- Do not try to embed video in links (e.g. [](.mp4) or https://.mp4) instead put the file_path in a code block using backticks
-- Do not put video in multiline code block it will not render the video (e.g. \`\`\`bash\n.mp4\`\`\` IS WRONG) instead using inline code block with single backtick
-- Always answer my question/intent, do not make up things
+export const DEFAULT_PROMPT = `规则：
+- 你可以通过将 .mp4 文件放在代码块中（我们将渲染它）来向用户分析/查看/展示/访问视频，如下所示：\`/users/video.mp4\`，使用 file_path 属性中的确切绝对文件路径。
+- 不要尝试在链接中嵌入视频（例如 [](.mp4) 或 https://.mp4），而是使用反引号将 file_path 放在代码块中。
+- 不要将视频放在多行代码块中，这样不会渲染视频（例如 \`\`\`bash\n.mp4\`\`\` 是错误的），而是使用带单反引号的行内代码块。
+- 始终回答我的问题/意图，不要编造内容。
 `;
 
 export function AIProviderConfig({

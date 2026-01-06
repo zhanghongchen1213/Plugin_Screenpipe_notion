@@ -35,50 +35,50 @@ async function analyzeRelationships(
 		throw new Error("ai preset not found");
 	}
 
-	const prompt = `You are a professional relationship intelligence analyst. Your task is to analyze work logs and generate a comprehensive relationship intelligence report.
+	const prompt = `你是一位专业的关系智能分析师。你的任务是分析工作日志并生成一份全面的关系智能报告。
 
-    ANALYSIS OBJECTIVES:
-    1. Extract all individuals mentioned, including their full names and organizations
-    2. Determine the nature and quality of each interaction (positive, neutral, negative)
-    3. Calculate sentiment scores (-1 to 1) based on interaction context
-    4. Identify recurring discussion topics and their importance
-    5. Recognize potential business opportunities and collaboration possibilities
-    6. Suggest specific, actionable follow-ups for each contact
+    分析目标：
+    1. 提取提到的所有个人，包括其全名和组织机构
+    2. 确定每次互动的性质和质量（积极、中立、消极）
+    3. 根据互动语境计算情感得分（-1 到 1）
+    4. 识别重复出现的讨论主题及其重要性
+    5. 识别潜在的商业机会和合作可能性
+    6. 为每位联系人建议具体、可操作的后续步骤
 
-    CONTEXT:
-    Today's date: ${new Date().toISOString().split("T")[0]}
-    Current time: ${new Date().toLocaleTimeString()}
-    Timezone: ${Intl.DateTimeFormat().resolvedOptions().timeZone}
+    上下文：
+    今天的日期：${new Date().toISOString().split("T")[0]}
+    当前时间：${new Date().toLocaleTimeString()}
+    时区：${Intl.DateTimeFormat().resolvedOptions().timeZone}
 
-    WORK LOGS TO ANALYZE:
+    待分析的工作日志：
     ${recentLogs}
 
-    RESPONSE FORMAT:
-    Return a JSON object with the following structure:
+    响应格式：
+    返回具有以下结构的 JSON 对象：
     {
       "contacts": [
         {
-          "name": "Full Name",
-          "company": "Organization Name",
+          "name": "全名",
+          "company": "组织名称",
           "lastInteraction": "YYYY-MM-DD",
-          "sentiment": 0.X, // Range from -1.0 (negative) to 1.0 (positive)
-          "topics": ["topic1", "topic2", "topic3"],
-          "nextSteps": ["specific action 1", "specific action 2"]
+          "sentiment": 0.X, // 范围从 -1.0（消极）到 1.0（积极）
+          "topics": ["主题1", "主题2", "主题3"],
+          "nextSteps": ["具体行动 1", "具体行动 2"]
         },
-        // Additional contacts...
+        // 其他联系人...
       ],
       "insights": {
-        "followUps": ["priority follow-up 1", "priority follow-up 2"],
-        "opportunities": ["business opportunity 1", "business opportunity 2"]
+        "followUps": ["优先后续行动 1", "优先后续行动 2"],
+        "opportunities": ["商业机会 1", "商业机会 2"]
       }
     }
 
-    IMPORTANT:
-    - Use only real names and companies found in the logs
-    - Ensure sentiment scores accurately reflect interaction quality
-    - Provide specific, actionable next steps tailored to each contact
-    - Prioritize follow-ups based on urgency and potential value
-    - Identify concrete business opportunities with clear potential benefits
+    重要提示：
+    - 仅使用日志中发现的真实姓名和公司
+    - 确保情感得分准确反映互动质量
+    - 为每位联系人提供具体、可操作的后续步骤
+    - 根据紧迫性和潜在价值对后续行动进行优先排序
+    - 识别具有明确潜在利益的具体商业机会
     `;
 
 	const openai = new OpenAI({

@@ -68,27 +68,27 @@ export async function generateWorkLog(
     enrichedPrompt = await extractLinkedContent(customPrompt);
   }
 
-  const defaultPrompt = `You are a helpful assistant that analyzes the following screen data and generates an accurate work activity log entry.
+  const defaultPrompt = `你是一个有用的助手，负责分析屏幕数据并生成准确的工作活动日志条目。
 
-    Instructions:
-    - Carefully examine the screen data to identify the main activities performed
-    - Extract specific application names, websites visited, and documents worked on
-    - Create a precise, factual description of the work completed
-    - Identify relevant tags based on the actual content (projects, tools, topics)
-    - Use the following context to understand the user's goals and priorities:
+    指令：
+    - 仔细检查屏幕数据以识别执行的主要活动
+    - 提取特定的应用程序名称、访问的网站和处理的文档
+    - 创建已完成工作的精确、事实性描述
+    - 根据实际内容（项目、工具、主题）识别相关标签
+    - 使用以下上下文来理解用户的目标和优先级：
 
     ${enrichedPrompt}
 
-    Screen data: ${JSON.stringify(screenData)}
+    屏幕数据: ${JSON.stringify(screenData)}
 
-    Return a valid JSON object with exactly this structure:
+    返回一个完全符合此结构的有效 JSON 对象：
     {
-        "title": "Specific, accurate title reflecting the main activity",
-        "description": "Detailed but concise description of what was accomplished, mentioning specific tools and content",
-        "tags": ["#relevant_tag1", "#relevant_tag2", "#relevant_tag3"]
+        "title": "反映主要活动的具体、准确的标题",
+        "description": "详细但简洁的描述已完成的工作，提及具体的工具和内容",
+        "tags": ["#相关标签1", "#相关标签2", "#相关标签3"]
     }
 
-    Ensure the JSON is properly formatted and contains only the requested fields.`;
+    确保 JSON 格式正确，仅包含请求的字段。`;
 
   console.log("enrichedPrompt prompt:", enrichedPrompt);
 
