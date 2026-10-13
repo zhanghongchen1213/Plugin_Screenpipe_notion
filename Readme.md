@@ -1,267 +1,215 @@
----
+<p align="center">
+  <img src="https://image-osb.obs.cn-east-3.myhuaweicloud.com/blog/2026-01-06/daily-report/r04/cover/cover-video-c1574f7a966e.webp" alt="标题为让电脑替你记工作，副标题为 Screenpipe + Ollama + Notion 工作日志系统，下方是采集、整理、归档三步" width="100%">
+</p>
 
-## title: 基于 Screenpipe + Ollama + Notion 打造 AI 全自动日报、周报生成、总结、追溯管理
-slug: daily-report
-summary: 在数字化办公时代，如何高效记录工作内容并生成高质量的日报/周报是很多开发者的痛点。本文将分享如何利用 Screenpipe（开源屏幕记录工具）、Ollama（本地大模型推理引擎）与 Notion（可视化数据库），构建一套完全运行在本地（隐私安全）且高度自动化的工作流。
-category: AI自动化
-categorySlug: ai-automation
-type: blog
-status: published
-publishedAt: 2026-01-04T00:00:00.000Z
+<p align="center">
+  <img src="https://img.shields.io/badge/Node.js-18-111111?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node.js 18">
+  <img src="https://img.shields.io/badge/TypeScript-5-111111?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript 5">
+  <img src="https://img.shields.io/badge/Next.js-15-111111?style=flat-square&logo=nextdotjs&logoColor=white" alt="Next.js 15">
+  <img src="https://img.shields.io/badge/React-19-111111?style=flat-square&logo=react&logoColor=white" alt="React 19">
+  <img src="https://img.shields.io/badge/License-MIT-111111?style=flat-square" alt="MIT License">
+</p>
 
-# 基于 Screenpipe + Ollama + Notion 打造 AI 全自动日报、周报生成、总结、追溯管理
+<p align="center">
+  <b>把屏幕活动写进 Notion 的 Screenpipe 插件。</b><br>
+  换成自己的 Notion 数据库和本机模型地址，就能按间隔生成活动日志。
+</p>
 
-> **摘要**：在数字化办公时代，如何高效记录工作内容并生成高质量的日报/周报是很多开发者的痛点。本文将分享如何利用 **Screenpipe**（开源屏幕记录工具）、**Ollama**（本地大模型推理引擎）与 **Notion**（可视化数据库），构建一套完全运行在本地（隐私安全）且高度自动化的工作流。
->
-> **关键词**：Screenpipe, Ollama, Notion API, RAG, Local LLM, 自动化办公
+<p align="center">
+  <a href="#功能">功能</a> ·
+  <a href="#跑起来">跑起来</a> ·
+  <a href="#改成你的">改成你的</a> ·
+  <a href="#构建与部署">构建与部署</a> ·
+  <a href="#遇到问题时">遇到问题时</a> ·
+  <a href="#交流与贡献">交流与贡献</a> ·
+  <a href="#许可">许可</a>
+</p>
 
----
+## 这是什么
 
-## 1. 架构概览
+这是给已经在用 Screenpipe 的人准备的 Next.js 插件，当前版本 `0.1.16`。它定时读取本机屏幕文字和音频转写，通过 OpenAI 兼容接口整理成标题、描述和标签，写入 Notion 的 Activity Logs。另一条定时任务读取这些日志，把联系人、跟进和机会写入 Relationship Intelligence。
 
-本方案的核心逻辑是通过 Screenpipe 全天候后台录制屏幕与音频（数据存储在本地），利用本地部署的 LLM (Qwen2.5) 定期分析录制内容，提取关键工作项，最后通过 API 自动推送到 Notion 数据库中形成日报。通过 Notion AI 自动生成每日日报、周报并自动存储到数据库，用户可以方便地查看、管理和追溯所有工作记录。
+插件按 Screenpipe 的 `pipe.json` Pipes 方式运行：`is_nextjs` 为 `true`，页面端口是 `44719`。模型调用走你填的兼容接口，仓库里的示例是本机 Ollama。它不扫描 Git 仓库，也不在定时任务里生成日报、周报或月报。根目录的 `daily-report-cn.json` 只是一份提示词示例，程序不会读取它。
 
-- **数据层**：Screenpipe (本地 SQLite + 媒体文件)
-- **推理层**：Ollama + Qwen2.5 (本地显卡推理)
-- **表现层**：Notion Database (云端可视化与管理)
+Windows 上的安装、Notion 模板，以及用 Notion AI 做日报和周报汇总，写在配套文章里。那些汇总不由本仓库的 cron 触发。
 
----
+## 预览
 
-## 2. 环境构建 (Environment Setup)
+下列界面来自 2026 年 1 月的部署，对应本仓库 `package.json` 的 `0.1.16`。
 
-### 2.1 Screenpipe 部署
+<p align="center">
+  <img src="https://image-osb.obs.cn-east-3.myhuaweicloud.com/blog/2026-01-06/daily-report/r03/007.webp" alt="Ollama 预设的本机兼容接口与 qwen2.5 模型配置" width="100%">
+</p>
 
-Screenpipe 是整个系统的“眼睛”，负责底层的屏幕捕获与 OCR 处理。
+<p align="center">
+  <img src="https://image-osb.obs.cn-east-3.myhuaweicloud.com/blog/2026-01-06/daily-report/r03/008.webp" alt="Notion 插件的执行间隔、Page Size 与内容去重设置" width="100%">
+</p>
 
-1. **获取安装包**：访问 Screenpipe 的 [GitHub Release 官方网站](https://github.com/mediar-ai/screenpipe)。
-2. **快速安装**：也可以直接在 PowerShell 中运行以下命令进行一键安装：
+<p align="center">
+  <img src="https://image-osb.obs.cn-east-3.myhuaweicloud.com/blog/2026-01-06/daily-report/r03/010.webp" alt="Activity Logs 中已保存的工作记录与时间字段" width="100%">
+</p>
 
-```powershell
- # 快速安装
- irm https://raw.githubusercontent.com/mediar-ai/screenpipe/main/install.ps1 | iex
+## 功能
 
- # 首次运行
- screenpipe
-```
+| 能力 | 得到的结果 |
+| --- | --- |
+| **活动日志** | 查询近期屏幕数据，生成 `title`、`description`、`tags`，写入 Activity Logs，并带上起止时间 |
+| **关系分析** | 读取已写入的活动日志，生成联系人、跟进和机会，写入 Relationship Intelligence |
+| **模型预设** | 页面上可以为日志和关系分析各选一个预设。`/api/log` 与 `/api/intelligence` 当前都读取日志预设 `aiLogPresetId` |
+| **自定义提示词** | 页面中的 Custom Prompt 会进入活动日志的生成提示。模型仍要返回上述三个 JSON 字段 |
+| **当次去重** | 打开后用本机 `nomic-embed-text` 去掉这一次查询里相似度超过 `0.95` 的内容。向量失败时保留原数据继续处理 |
+| **试跑** | Notion 连接成功后，可以用 Test Log、Test Intelligence 各触发一次写入 |
 
-3. **初始化**：首次运行 Screenpipe 时，它会自动初始化 `%LOCALAPPDATA%\.screenpipe` 目录，同时安装 ffmpeg 等一系列插件。请确保授予其屏幕录制与麦克风权限。
+连接校验会改写两个数据库。它把标题设为 `Activity Logs` 和 `Relationship Intelligence`，并写入下面这些字段。活动日志的标题字段是 `Name`。
 
-### 2.2 本地大模型部署 (Ollama)
+| 数据库 | 字段 |
+| --- | --- |
+| Activity Logs | `Name`、`Description`、`Tags`、`Date`、`StartTime`、`EndTime`、`Summary` |
+| Relationship Intelligence | `Name`、`Date`、`Summary`，页面正文另有联系人和洞察 |
 
-为了确保工作数据的隐私安全，我们拒绝将截图上传至云端 API，而是使用 Ollama 进行本地推理。
+## 跑起来
 
-1. **安装 Ollama**：前往 [Ollama 官网](https://ollama.com/) 下载 Windows 版本。
-2. **拉取模型**：推荐使用 `qwen2.5`，它在中文语境下的指令遵循能力极强，且 7B 版本在主流显卡上推理速度极快。
+运行门槛来自 `package-lock.json` 里 `next@15.1.0` 的 `engines`：Node.js `^18.18.0 || ^19.8.0 || >=20.0.0`。另外需要仍能加载 `pipe.json` Next.js 插件的 Screenpipe、一个 Notion 内部集成，以及一个 OpenAI 兼容接口。
 
-```bash
- ollama pull qwen2.5
-```
-
-3. **验证服务**：在终端输入 `ollama list` 确认模型已就绪。
-
----
-
-## 3. 插件编译与集成 (Plugin Integration)
-
-Screenpipe 支持插件机制（Pipes），我们需要配置 Notion 插件来实现数据打通。
-
-### 3.1 插件部署
-
-1. 下载修改移植的 Screenpipe-Notion-Plugin 插件：[Screenpipe-Notion-Plugin](https://github.com/zhanghongchen1213/Screenpipe-Notion-Plugin)
-2. 将下载好的文件解压重命名为 `notion` ，之后插件文件夹放置于 Screenpipe 的插件目录：
-   `C:\Users\[你的用户名]\.screenpipe\pipes`
-3. **编译构建**：由于插件包含 TypeScript 代码，需要进行本地构建。
-
-```bash
- # 进入插件目录
- cd C:\Users\[你的用户名]\.screenpipe\pipes\notion
-
- # 安装依赖 (推荐 npm)
- npm install
-
- # 构建产物
- npm run build
-```
-
-### 3.2 激活插件
-
-1. 重启 Screenpipe 服务。
-2. 使用 CLI 命令检查插件状态：
+仓库同时有 `package-lock.json` 和 `bun.lock`。下面的命令使用 npm。
 
 ```bash
- screenpipe pipe list
+git clone https://github.com/zhanghongchen1213/Plugin_Screenpipe_notion.git
 ```
 
-3. 如果插件未启用，执行：
+克隆下来的目录名是 `Plugin_Screenpipe_notion`。放进 Screenpipe 时要改成 `notion`，因为保存间隔时写入的路径是 `pipes/notion/pipe.json`。
 
 ```bash
- screenpipe pipe enable notion
+# macOS / Linux
+mkdir -p ~/.screenpipe/pipes
+mv Plugin_Screenpipe_notion ~/.screenpipe/pipes/notion
+cd ~/.screenpipe/pipes/notion
+npm install
+npm run build
 ```
 
-配置插件成功如下图所示
-![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10001.png)
+Windows 上的对应目录是 `%USERPROFILE%\.screenpipe\pipes\notion`。`pipe.json` 里 `enabled` 已是 `true`，端口是 `44719`。由兼容的 Screenpipe 加载后，打开 `http://localhost:44719`。
 
-## 4. Notion API 对接与鉴权
+在仓库目录里改界面时，用开发服务器。它走 Next.js 默认端口，不是 `44719`。
 
-### 4.1 获取模版
-
-为了配合插件的数据结构，建议下载 Notion 模版到工作空间内：
-
-- [Activity Log (活动日志)](https://foregoing-domain-39f.notion.site/2e0be665a1c78011afd5c9dcf345b1a5?v=2e0be665a1c781b98d75000cea4cb6e8)
-- [Relationship Intelligence (关系分析)](https://foregoing-domain-39f.notion.site/2e0be665a1c7801a9898cd4fc726de9b?v=2e0be665a1c7817ca33e000c80134f6b)
-- [Work Log Center (工作日志中心)](https://foregoing-domain-39f.notion.site/2e0be665a1c780549ee5dd4b8dff559d)
-
-### 4.2 创建 Integration
-
-1. 进入 [Notion 集成](https://www.notion.so/profile/integrations/) 创建一个新的 Integration。
-2. 获取 **Internal Integration Secret** (密钥)。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10002.png)
-3. 在集成的访问权限中，授予读写权限。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10003.png)
-
-### 4.3 配置 Screenpipe
-
-1. 运行 Screenpipe 服务。
-2. 访问 Notion 插件本地配置后台：`http://localhost:44719` 。
-3. 填入 Notion Secret 并选择 Database ID。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10004.png)
-4. 配置本地 Ollama 模型
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10005.png)
-   可参数输入模型分析 Custom Prompt
-5. 配置分析频率等参数，点击保存：
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10006.png)
-6. 连通性测试
-   如果看到同步成功的日志，说明链路已打通。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10007.png)
-
----
-
-## 5. 自动化编排 (Workflow Automation)
-
-为了实现“开机即用，用完即走”，我们需要一个自动化脚本来管理 Screenpipe 和 Ollama 的生命周期，并自动清理过期的视频文件以节省磁盘空间。
-**注意**：需要根据实际情况修改 `set "User_name=Administrator"` 为你的用户名。
-
-以下是 `Start-Screenpipe.bat` 的完整实现代码：
-
-```batch
-@echo off
-setlocal EnableDelayedExpansion
-set "User_name=Administrator"
-
-echo ==========================================
-echo       Screenpipe Launcher
-echo ==========================================
-echo.
-
-:: 1. Clean up old video files
-echo [1/4] Cleaning up old video files (keeping today and yesterday)...
-set "DATA_DIR=C:\Users\%User_name%\.screenpipe\data"
-
-:: Get today and yesterday dates using PowerShell
-for /f "usebackq tokens=*" %%a in (`powershell -command "(Get-Date).ToString('yyyy-MM-dd')"`) do set "TODAY=%%a"
-for /f "usebackq tokens=*" %%a in (`powershell -command "(Get-Date).AddDays(-1).ToString('yyyy-MM-dd')"`) do set "YESTERDAY=%%a"
-
-echo [CHECK] Keep dates: %TODAY% (Today) and %YESTERDAY% (Yesterday)
-
-if exist "%DATA_DIR%" (
-    pushd "%DATA_DIR%"
-    :: Iterate over mp4 files
-    for %%F in (*.mp4) do (
-        echo "%%F" | findstr "%TODAY%" >nul
-        if errorlevel 1 (
-            echo "%%F" | findstr "%YESTERDAY%" >nul
-            if errorlevel 1 (
-                echo [DELETE] Deleting expired file: %%F
-                del "%%F"
-            )
-        )
-    )
-    popd
-    echo [INFO] Cleanup complete.
-) else (
-    echo [WARNING] Data directory not found: %DATA_DIR%
-)
-echo.
-
-:: 2. Check Ollama status
-echo [2/4] Checking AI Service (Ollama)...
-tasklist /FI "IMAGENAME eq ollama.exe" 2>NUL | find /I /N "ollama.exe">NUL
-if "%ERRORLEVEL%"=="0" (
-    echo [INFO] Ollama is already running.
-) else (
-    echo [INFO] Ollama is not running, starting...
-    start "Ollama Server" /MIN ollama serve
-    timeout /t 5 >nul
-)
-
-:: 3. Start Screenpipe
-echo [3/4] Starting Screenpipe...
-if exist "C:\Users\%User_name%\screenpipe\bin\screenpipe.exe" (
-    start "Screenpipe Backend" "C:\Users\%User_name%\screenpipe\bin\screenpipe.exe"
-    echo [INFO] Screenpipe started.
-) else (
-    echo [ERROR] Screenpipe executable not found.
-    pause
-    exit /b 1
-)
-
-:: 4. Verify Notion plugin status
-echo [4/4] Waiting for Notion plugin (port 44719)...
-set "RETRIES=0"
-:CHECK_PORT
-netstat -an | find "44719" | find "LISTENING" >nul
-if "%ERRORLEVEL%"=="0" (
-    echo.
-    echo [SUCCESS] Notion plugin started successfully on port 44719!
-    echo [SUCCESS] Daily logging is ready.
-) else (
-    set /a RETRIES+=1
-    if !RETRIES! LSS 20 (
-        timeout /t 2 >nul
-        goto CHECK_PORT
-    ) else (
-        echo.
-        echo [WARNING] Notion plugin startup timed out.
-        echo Please check Screenpipe window for errors.
-        echo Screenpipe backend is running, plugin might start later.
-    )
-)
-
-echo.
-echo Script finished. Closing in 10 seconds.
-timeout /t 10
-exit
+```bash
+npm install
+npm run dev
 ```
 
-**使用建议**：将此脚本放置在桌面或添加到 Windows 启动项中，每天开机自动运行。
+| 脚本 | 作用 |
+| --- | --- |
+| `npm run dev` | `next dev --turbopack` |
+| `npm run build` | `next build --no-lint` |
+| `npm start` | `next start` |
+| `npm run lint` | `next lint` |
 
-## 6. 实战演示 (Demo)
+页面分三步填完才能试跑。
 
-### 6.1 配置 Notion 工作日志中心
+1. 在 [Notion 集成](https://www.notion.so/my-integrations) 创建内部集成，把 Activity Logs 和 Relationship Intelligence 都加入可访问范围。
+2. 在 Connection 填入集成密钥，选中这两个数据库，点击 Connect Notion，再保存设置。请使用专门复制出来的库。
+3. 在 AI Models 里为日志选择预设。示例地址是 `http://localhost:11434/v1`，模型名与本机 `ollama list` 一致，例如 `qwen2.5:latest`。地址要带 `/v1`。
 
-配置完成后，系统将自动在后台工作。启用 Notion AI 后，更可以实现对日志的深度分析、管理和追溯。
+保存后点击 Test Log。Activity Logs 里出现新的标题、描述、标签和起止时间，这条链路才算接上。页面能打开只说明 `44719` 在监听；采集服务另看 `http://localhost:3030/health`。
 
-1. **个性化配置**：选择**工作日志中心**的**日报总结助手**或者**周报总结助手**作为 AI 说明。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10008.png)
-2. **一键生成日报**：输入关键词"帮我完成今日日报" 或 "生成今天的日报"，系统将根据时间线自动汇总今日工作，并添加至**日数据库**中方便管理和回溯。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10009.png)
-3. **周报自动汇总**：输入关键词 "帮我完成本周周报" 或 "生成这周的周报"，系统将根据本周的日报数据，自动生成周维度总结，并添加至**周数据库**中方便管理和回溯。
-   ![](/Users/hongchenke/Documents/Github/Plugin/Screenpipe-Notion-Plugin/基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10010.png)
+`Start-Screenpipe.bat` 是可选的 Windows 开机脚本。使用前先改用户名，见下一节。它会删除数据目录里文件名不含今天或昨天日期的 `.mp4`。
 
----
+## 目录
 
-### 6.2 Notion AI 生成效果演示
+```text
+.
+├── Start-Screenpipe.bat      Windows 启动脚本，含 mp4 清理
+├── daily-report-cn.json      提示词示例，程序不读取
+├── package.json
+├── pipe.json                 端口 44719 与两条 cron
+├── public/
+└── src/
+    ├── app/
+    │   ├── page.tsx          配置页
+    │   └── api/
+    │       ├── log/          活动日志
+    │       ├── intelligence/ 关系分析
+    │       ├── setup/        用本机 Chrome 自动创建集成和数据库
+    │       └── notion/pages/ 按密钥搜索 Notion 页面
+    ├── components/           连接、预设、同步设置
+    └── lib/                  Notion 写入、模型调用、pipe.json 更新
+```
 
-五张截图默认收起，点标题再展开，避免竖图和横图连成一长条。
+| 路径 | 作用 |
+| --- | --- |
+| `/` | 配置页：连接、模型预设、同步间隔 |
+| `/api/log` | 查屏幕数据并写一条活动日志。`pipe.json` 默认 `0 */5 * * * *`，每 5 分钟 |
+| `/api/intelligence` | 读已有日志并写关系分析。`pipe.json` 默认 `0 0 */1 * * *`，每 1 小时 |
+| `/api/setup` | 打开本机 Chrome，登录 Notion 后创建名为 `Screenpipe Logger` 的集成和两张表 |
+| `/api/notion/pages` | 用查询参数里的 `accessToken` 搜索页面，给定时任务的提示词补全内容 |
 
-成稿 · 2026-01-06 每日工作日报![2026-01-06 每日工作日报](./基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10011.jpeg)
+## 改成你的
 
-成稿 · 2026 年第 1 周工作周报![2026 年第 1 周工作周报](./基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/10012.jpeg)
+| 要改的内容 | 位置 | 当前值 |
+| --- | --- | --- |
+| 插件目录名 | Screenpipe 的 `pipes/` 下 | 必须叫 `notion` |
+| 短期间隔 | 页面 Sync Settings，或 `pipe.json` 的 `/api/log` | 每 5 分钟 |
+| 长期间隔 | 同上，对应 `/api/intelligence` | `pipe.json` 为每 1 小时。页面未保存过设置时，输入框默认显示 `5`，单位按代码是小时 |
+| 查询窗口 | `src/app/api/log/route.ts` | `minute(1)`，每次只查最近 1 分钟 |
+| 单次条数 | 页面 Page Size | 默认 `50`，输入范围 10–100 |
+| 自定义数据目录 | 环境变量 `SCREENPIPE_DIR` | 未设置时用 `$HOME/.screenpipe`，再没有则用当前工作目录 |
+| 活动日志提示词 | 页面 Custom Prompt | 代码里的默认提示在 `src/lib/store/settings-store.ts` |
+| 模型地址和名称 | 页面 AI Presets | 示例见 `daily-report-cn.json`：`http://localhost:11434/v1`、`qwen2.5:latest` |
+| 集成显示名 | `src/lib/utils.ts` 的 `INTEGRATION_NAME` | `Screenpipe Logger`。只影响 `/api/setup` 自动创建 |
+| Windows 开机脚本 | `Start-Screenpipe.bat` 的 `User_name` | `Administrator`。数据目录是 `C:\Users\%User_name%\.screenpipe\data`，程序路径是 `C:\Users\%User_name%\screenpipe\bin\screenpipe.exe` |
 
-库内对照 · 日报列表与 2026-04-08 成稿![日报列表与 2026-04-08 成稿并排](./基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/微信图片_20261012074724_263_3.png)
+改完后重新构建，用 Screenpipe 加载插件，打开配置页保存一次，再点 Test Log。到 Activity Logs 确认新页面的 `Name`、`Description`、`Tags` 和起止时间。
 
-库内对照 · 周报列表与 2026-05-25 至 05-30 成稿![周报列表与 2026-05-25 至 05-30 成稿并排](./基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/微信图片_20261012074724_265_3.png)
+用开机脚本时，把 `User_name` 改成自己的 Windows 用户名，并确认上面两个路径在本机存在。清理规则按文件名里的 `yyyy-MM-dd` 匹配，只处理该目录一层里的 `.mp4`。录屏文件名对不上时，先不要运行脚本里的清理段。
 
-库内对照 · 2026 年 4 月工作月报![2026 年 4 月工作月报](./基于_Screenpipe_+_Ollama_+_Notion_打造_AI_全自动日报、周报生成、总结、追溯管理_screenpipe_自动日报-CSDN博客/微信图片_20261012074724_264_3.png)
+## 构建与部署
 
-> **总结**：通过 Screenpipe + Ollama + Notion 的组合，可以成功构建了一个既保护隐私又极具生产力的本地化 AI 工作流。这不仅是一个工具的堆叠，更是对个人数据主权的一种实践。
+Notion 密钥和同步间隔写在 Screenpipe 的插件设置里，不进这个仓库。`.gitignore` 已忽略 `.env*`。只有数据目录不在默认位置时，才需要设置 `SCREENPIPE_DIR`，把它指到 `.screenpipe` 根目录。
+
+```bash
+npm run build
+```
+
+构建产物在 `.next/`。`next.config.ts` 没有静态导出。`npm start` 可以单独把构建结果跑起来，页面端口仍要自己指定；Screenpipe 加载时使用 `pipe.json` 的 `44719`。
+
+这条插件要留在本机 Screenpipe 进程里。`/api/log` 会读取屏幕内容，配置页会保存 Notion 密钥，去重还会请求 `http://localhost:11434`。不要把它部署到公网。
+
+## 遇到问题时
+
+| 现象 | 先检查 |
+| --- | --- |
+| 插件页面打得开，但没有屏幕数据 | `http://localhost:3030/health` 是否正常。`/api/log` 只查询最近 1 分钟，而 cron 默认每 5 分钟执行一次 |
+| 返回 `ai preset not selected` | 是否保存了日志预设。两个接口都读 `aiLogPresetId`，关系分析不读页面上的 Intelligence 预设 `aiPresetId` |
+| 模型接口报错 | 预设 `url` 是否为 `http://localhost:11434/v1` 这种带 `/v1` 的地址，`model` 是否与本机列表一致 |
+| 返回 `notion not configured`，或数据库无权访问 | 集成密钥，以及 Activity Logs、Relationship Intelligence 是否都在该集成的可访问范围里 |
+| 写入提示字段不匹配 | 活动日志标题字段是 `Name`。连接成功时，校验会重写两个库的标题和字段 |
+| 关系分析几乎没有标题 | `src/app/api/intelligence/route.ts` 的 `readRecentLogs` 读取属性 `Title`，写入代码使用的是 `Name` |
+| 改了间隔却没按新节奏跑 | 被改写的是 `SCREENPIPE_DIR` 或 `$HOME/.screenpipe` 下的 `pipes/notion/pipe.json`，不是仓库里这份副本 |
+| 去重开关一直在下载模型 | 开关固定请求 `http://localhost:11434/api/tags` 和 `/api/pull`，不跟随日志预设里的地址 |
+| 开机后录屏文件变少 | `Start-Screenpipe.bat` 会删除数据目录中文件名不含今天或昨天日期的 `.mp4` |
+
+## 交流与贡献
+
+部署和使用时遇到问题，可以到 [Issues](https://github.com/zhanghongchen1213/Plugin_Screenpipe_notion/issues) 提问。用这套源码做出自己的成果后，也欢迎在 Issue 里留下地址。
+
+发现 Bug 或有明确的改动建议，请 [提交 Issue](https://github.com/zhanghongchen1213/Plugin_Screenpipe_notion/issues/new)。本仓库没有单独的贡献说明和安全政策，改代码前先用 Issue 说明改动范围。不要在公开 Issue 里贴密钥、令牌或环境变量文件。
+
+**本文资料 · 接着动手**
+
+**鸿尘客公众号**  
+扫码关注鸿尘客公众号，回复 **“查看原文”**，获取本文开源资料与配套内容。
+
+![鸿尘客公众号二维码](https://image-osb.obs.cn-east-3.myhuaweicloud.com/wemedia/wxlogo.webp)
+
+**鸿尘客独立站**
+
+点击下方获取本文**开源资料**与**配套内容**  
+[开源资料：https://zhcmqtt.top/article/daily-report](https://zhcmqtt.top/article/daily-report)
+
+![官网](https://image-osb.obs.cn-east-3.myhuaweicloud.com/wemedia/honchic_logo.webp)
+
+## 许可
+
+本仓库采用 [MIT License](LICENSE)。
+
+插件主体来自 Screenpipe 的 Notion pipe。转换时该上游仓库仍为 MIT，版权归 louis030195（2024–2025）。本仓库中的修改与文档版权归鸿尘客 ZhangHongChen（2026）。两份版权声明都写在根目录 `LICENSE` 中。
